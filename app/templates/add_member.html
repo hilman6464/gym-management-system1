@@ -1,0 +1,136 @@
+﻿{% extends 'base.html' %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">افزودن عضو جدید</h1>
+
+{% if no_clubs %}
+<!-- 🚫 اگر هیچ باشگاهی وجود ندارد -->
+<div class="bg-yellow-100 border border-yellow-400 rounded-lg p-6 text-center mb-6">
+    <div class="text-yellow-600 text-4xl mb-4">🏋️</div>
+    <h2 class="text-xl font-bold text-yellow-800 mb-2">هیچ باشگاهی وجود ندارد!</h2>
+    <p class="text-yellow-700 mb-4">برای افزودن عضو، ابتدا باید باشگاه ایجاد کنید.</p>
+    <a href="{{ url_for('clubs.add_club') }}" class="bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600">
+        ➕ ایجاد باشگاه جدید
+    </a>
+</div>
+{% else %}
+<!-- ✅ فرم عادی اگر باشگاه وجود دارد -->
+<form method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-right" id="addMemberForm">
+    <input name="name" placeholder="نام" class="border p-2 w-full text-right" required>
+    <input name="family_name" placeholder="نام خانوادگی" class="border p-2 w-full text-right" required>
+    
+    <input name="national_id" placeholder="کد ملی" class="border p-2 w-full text-right" required>
+    <input name="phone" placeholder="شماره تلفن" class="border p-2 w-full text-right" required>
+    
+    <select name="belt" class="border p-2 w-full text-right" required>
+        <option value="">انتخاب کمربند</option>
+        {% for b in belts %}
+        <option value="{{ b }}">{{ b }}</option>
+        {% endfor %}
+    </select>
+    
+    <!-- فیلد تاریخ اخذ کمربند -->
+    <input name="belt_date" placeholder="تاریخ اخذ کمربند (مثال: 1403/07/15)" class="border p-2 w-full text-right">
+    
+    <input name="birth_date" placeholder="تاریخ تولد (مثال: 1380/05/20)" class="border p-2 w-full text-right">
+    <input name="insurance_start" placeholder="تاریخ شروع بیمه (مثال: 1403/01/01)" class="border p-2 w-full text-right">
+    
+    <!-- انتخاب باشگاه و سانس -->
+    <div>
+        <label class="block mb-1 text-right font-medium">انتخاب باشگاه *</label>
+        <select name="club_id" id="clubSelect" class="border p-2 w-full text-right" required onchange="loadSessions(this.value)">
+            <option value="">انتخاب باشگاه</option>
+            {% for c in clubs %}
+            <option value="{{ c['club_id'] }}">{{ c['name'] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div>
+        <label class="block mb-1 text-right font-medium">انتخاب سانس *</label>
+        <select name="session_id" id="sessionSelect" class="border p-2 w-full text-right" required>
+            <option value="">ابتدا باشگاه را انتخاب کنید</option>
+            {% for s in sessions %}
+            <option value="{{ s['session_id'] }}">
+                {{ s['class_time'] }} - {{ s['coach_name'] }} ({{ s['days_display'] }})
+            </option>
+            {% endfor %}
+        </select>
+        <div id="sessionInfo" class="mt-2 text-sm text-gray-600 text-right hidden">
+            <!-- اطلاعات سانس اینجا نمایش داده می‌شود -->
+        </div>
+    </div>
+
+    <div class="md:col-span-2 text-center">
+        <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">ثبت عضو</button>
+    </div>
+</form>
+
+<!-- راهنمای فرمت تاریخ -->
+<div class="mt-4 p-3 bg-gray-100 rounded text-right text-sm">
+    <p class="font-bold">راهنما:</p>
+    <p>فرمت تاریخ: <strong>سال/ماه/روز</strong></p>
+    <p>مثال: 1403/07/15 = ۱۵ مهر ۱۴۰۳</p>
+</div>
+
+<script>
+// تابع برای بارگذاری سانس‌های یک باشگاه
+function loadSessions(clubId) {
+    const sessionSelect = document.getElementById('sessionSelect');
+    const sessionInfo = document.getElementById('sessionInfo');
+    
+    if (!clubId) {
+        sessionSelect.innerHTML = '<option value="">ابتدا باشگاه را انتخاب کنید</option>';
+        sessionInfo.classList.add('hidden');
+        return;
+    }
+    
+    // نمایش loading
+    sessionSelect.innerHTML = '<option value="">در حال بارگذاری سانس‌ها...</option>';
+    
+    // درخواست AJAX برای دریافت سانس‌ها
+    fetch(`/members/api/sessions/${clubId}`)
+        .then(response => response.json())
+        .then(sessions => {
+            if (sessions.length === 0) {
+                sessionSelect.innerHTML = '<option value="">هیچ سانسی برای این باشگاه وجود ندارد</option>';
+                sessionInfo.classList.add('hidden');
+            } else {
+                sessionSelect.innerHTML = '<option value="">انتخاب سانس</option>';
+                sessions.forEach(session => {
+                    const option = document.createElement('option');
+                    option.value = session.session_id;
+                    option.textContent = `${session.class_time} - ${session.coach_name} (${session.days_display})`;
+                    option.setAttribute('data-info', `${session.class_time} - ${session.coach_name} - ${session.days_display}`);
+                    sessionSelect.appendChild(option);
+                });
+                
+                // اضافه کردن event listener برای نمایش اطلاعات سانس
+                sessionSelect.onchange = function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    if (selectedOption.value && selectedOption.getAttribute('data-info')) {
+                        sessionInfo.innerHTML = `<strong>اطلاعات سانس:</strong> ${selectedOption.getAttribute('data-info')}`;
+                        sessionInfo.classList.remove('hidden');
+                    } else {
+                        sessionInfo.classList.add('hidden');
+                    }
+                };
+            }
+        })
+        .catch(error => {
+            console.error('Error loading sessions:', error);
+            sessionSelect.innerHTML = '<option value="">خطا در بارگذاری سانس‌ها</option>';
+            sessionInfo.classList.add('hidden');
+        });
+}
+
+// بارگذاری اولیه سانس‌ها اگر باشگاه پیش‌فرض انتخاب شده
+document.addEventListener('DOMContentLoaded', function() {
+    const clubSelect = document.getElementById('clubSelect');
+    if (clubSelect.value) {
+        loadSessions(clubSelect.value);
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

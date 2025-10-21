@@ -1,0 +1,143 @@
+﻿<!-- app/templates/backup_management.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+    <h2 class="text-2xl font-bold mb-6 text-right">💾 مدیریت پشتیبان‌گیری</h2>
+
+    <!-- آمار کلی -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-blue-50 p-4 rounded-lg text-center">
+            <div class="text-2xl font-bold text-blue-600">{{ total_count }}</div>
+            <div class="text-blue-700">کل بک‌آپ‌ها</div>
+        </div>
+        <div class="bg-green-50 p-4 rounded-lg text-center">
+            <div class="text-2xl font-bold text-green-600">{{ auto_count }}</div>
+            <div class="text-green-700">بک‌آپ خودکار</div>
+        </div>
+        <div class="bg-yellow-50 p-4 rounded-lg text-center">
+            <div class="text-2xl font-bold text-yellow-600">{{ manual_count }}</div>
+            <div class="text-yellow-700">بک‌آپ دستی</div>
+        </div>
+    </div>
+
+    <!-- دکمه‌های عملیات -->
+    <div class="bg-white p-6 rounded shadow mb-6">
+        <div class="flex flex-wrap gap-4 justify-end">
+            <button onclick="createManualBackup()" class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600">
+                📥 ایجاد بک‌آپ دستی
+            </button>
+            <a href="{{ url_for('backup.backup_management') }}" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">
+                🔄 بروزرسانی لیست
+            </a>
+        </div>
+    </div>
+
+    <!-- جدول بک‌آپ‌ها -->
+    <div class="bg-white rounded shadow overflow-hidden">
+        <table class="w-full text-right">
+            <thead class="bg-gray-200">
+                <tr>
+                    <th class="p-3 border">نوع</th>
+                    <th class="p-3 border">نام فایل</th>
+                    <th class="p-3 border">تاریخ ایجاد</th>
+                    <th class="p-3 border">حجم</th>
+                    <th class="p-3 border">عملیات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for backup in backups %}
+                <tr class="border-t hover:bg-gray-50">
+                    <td class="p-3 border">
+                        <span class="{% if backup.type == 'auto' %}bg-blue-100 text-blue-800{% else %}bg-yellow-100 text-yellow-800{% endif %} px-2 py-1 rounded text-sm">
+                            {{ 'خودکار' if backup.type == 'auto' else 'دستی' }}
+                        </span>
+                    </td>
+                    <td class="p-3 border font-mono text-sm">{{ backup.filename }}</td>
+                    <td class="p-3 border">{{ backup.created_at }}</td>
+                    <td class="p-3 border">{{ backup.size_human }}</td>
+                    <td class="p-3 border">
+                        <div class="flex gap-2 justify-end">
+                            <a href="{{ url_for('backup.download_backup', filename=backup.filename) }}" 
+                               class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm">
+                                📥 دانلود
+                            </a>
+                            <button onclick="deleteBackup('{{ backup.filename }}')" 
+                                    class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm">
+                                🗑️ حذف
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if not backups %}
+    <div class="text-center py-12 bg-white rounded shadow mt-4">
+        <div class="text-gray-400 text-6xl mb-4">💾</div>
+        <p class="text-gray-500 text-lg">هنوز بک‌آپی ایجاد نشده است.</p>
+        <p class="text-gray-400 text-sm mt-2">برای ایجاد اولین بک‌آپ روی دکمه "ایجاد بک‌آپ دستی" کلیک کنید</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function createManualBackup() {
+    // نمایش loading
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '⏳ در حال ایجاد بک‌آپ...';
+    button.disabled = true;
+
+    fetch("{{ url_for('backup.create_manual_backup') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ ' + data.message);
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        alert('❌ خطا در ایجاد بک‌آپ');
+        console.error('Error:', error);
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+function deleteBackup(filename) {
+    if (confirm('آیا از حذف این بک‌آپ مطمئن هستید؟')) {
+        fetch("{{ url_for('backup.delete_backup', filename='') }}" + filename, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✅ بک‌آپ با موفقیت حذف شد');
+                location.reload();
+            } else {
+                alert('❌ خطا در حذف بک‌آپ');
+            }
+        })
+        .catch(error => {
+            alert('❌ خطا در حذف بک‌آپ');
+            console.error('Error:', error);
+        });
+    }
+}
+</script>
+{% endblock %}

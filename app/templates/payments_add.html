@@ -1,0 +1,50 @@
+﻿{% extends 'base.html' %}
+{% block content %}
+<h2 class="text-xl font-bold mb-4">ثبت پرداخت جدید</h2>
+
+<form method="POST" class="bg-white p-6 rounded shadow">
+    <!-- فیلتر سانس‌ها -->
+    <div class="mb-4">
+        <label class="block mb-1">سانس:</label>
+        <select name="session_id" class="border p-2 w-full" onchange="this.form.submit()">
+            <option value="">همه سانس‌ها</option>
+            {% for s in sessions %}
+                <option value="{{ s.session_id }}" {% if s.session_id|string == request.args.get('session_id') %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- انتخاب عضو -->
+    <div class="mb-4">
+        <label class="block mb-1">عضو:</label>
+        <select name="member_id" class="border p-2 w-full" required>
+            {% for m in members %}
+                <option value="{{ m.id }}">{{ m.name }} {{ m.family_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- مبلغ -->
+    <div class="mb-4">
+        <label class="block mb-1">مبلغ:</label>
+        <input type="number" name="amount" class="border p-2 w-full" required>
+    </div>
+
+    <!-- ماه و سال -->
+    <div class="mb-4 flex space-x-2 space-x-reverse">
+        <div class="w-1/2">
+            <label class="block mb-1">ماه:</label>
+            <input type="number" name="month" min="1" max="12" class="border p-2 w-full" required>
+        </div>
+        <div class="w-1/2">
+            <label class="block mb-1">سال:</label>
+            <input type="number" name="year" min="1400" max="1500" class="border p-2 w-full" required>
+        </div>
+    </div>
+
+    <div class="flex space-x-2 space-x-reverse">
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">ثبت پرداخت</button>
+        <a href="{{ url_for('index') }}" class="bg-gray-400 text-white px-4 py-2 rounded">بازگشت به خانه</a>
+    </div>
+</form>
+{% endblock %}

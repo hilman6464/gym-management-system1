@@ -1,0 +1,142 @@
+﻿<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>برنامه مدیریت آکادمی استاد حجت شریفی</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+
+    <!-- ---------- نوار بالایی بهینه‌شده برای موبایل ---------- -->
+    <nav class="bg-white shadow-lg p-4 border-b-4 border-blue-600">
+        <div class="flex justify-between items-center">
+            <div class="text-xl md:text-2xl font-bold text-blue-700">سیستم هوشمند آکادمی استاد حجت شریفی</div>
+            
+            <!-- 🕒 کادر ساعت -->
+            <div class="bg-blue-100 border border-blue-300 rounded-lg px-4 py-2 text-center">
+                <div id="current-time" class="text-blue-700 font-bold text-lg"></div>
+                <div id="current-date" class="text-blue-600 text-sm"></div>
+            </div>
+            
+            <button id="menuBtn" class="md:hidden text-blue-700 text-2xl">☰</button>
+        </div>
+        
+        <ul id="navMenu" class="hidden md:flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4 md:space-x-reverse mt-4 md:mt-0">
+            <li><a href="{{ url_for('index') }}" class="block px-4 py-2 hover:bg-blue-50 rounded-lg transition duration-300 flex items-center">🏠 <span class="mr-2">داشبورد</span></a></li>
+            <li><a href="{{ url_for('members.members') }}" class="block px-4 py-2 hover:bg-blue-50 rounded-lg transition duration-300 flex items-center">👥 <span class="mr-2">اعضا</span></a></li>
+            <li><a href="{{ url_for('clubs.clubs') }}" class="block px-4 py-2 hover:bg-blue-50 rounded-lg transition duration-300 flex items-center">🏋️ <span class="mr-2">باشگاه‌ها</span></a></li>
+<li><a href="{{ url_for('attendance.attendance_main') }}" class="block px-4 py-2 hover:bg-green-50 rounded-lg transition duration-300 flex items-center">📝 <span class="mr-2">حضور و غیاب</span></a></li>
+            <li><a href="{{ url_for('payments.add_payment') }}" class="block px-4 py-2 hover:bg-green-50 rounded-lg transition duration-300 flex items-center">💰 <span class="mr-2">ثبت پرداخت شهریه</span></a></li>
+<li><a href="{{ url_for('payments.payments_report') }}" class="block px-4 py-2 hover:bg-purple-50 rounded-lg transition duration-300 flex items-center">📈 <span class="mr-2">گزارش شهریه‌ها</span></a></li>
+            <li><a href="{{ url_for('reports.advanced_report') }}" class="block px-4 py-2 hover:bg-yellow-50 rounded-lg transition duration-300 flex items-center">📊 <span class="mr-2">گزارشات</span></a></li>
+
+            
+            <li><a href="{{ url_for('age_categories.age_report') }}" class="block px-4 py-2 hover:bg-red-50 rounded-lg transition duration-300 flex items-center">🎯 <span class="mr-2">رده‌های سنی</span></a></li>
+<li>
+    <a href="{{ url_for('backup.backup_management') }}" 
+       class="block px-4 py-2 hover:bg-purple-50 rounded-lg transition duration-300 flex items-center">
+        💾 <span class="mr-2">مدیریت بک‌آپ</span>
+    </a>
+</li>
+        </ul>
+    </nav>
+
+    <!-- ---------- نمایش پیام‌های سیستم ---------- -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mx-auto px-4 md:px-6 mt-4">
+                {% for category, message in messages %}
+                    <div class="p-3 md:p-4 rounded-lg mb-3 border text-right {% if category == 'success' %}bg-green-50 text-green-800 border-green-300{% elif category == 'error' %}bg-red-50 text-red-800 border-red-300{% else %}bg-blue-50 text-blue-800 border-blue-300{% endif %}">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                {% if category == 'success' %}
+                                    <svg class="w-4 h-4 md:w-5 md:h-5 ml-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                    </svg>
+                                {% elif category == 'error' %}
+                                    <svg class="w-4 h-4 md:w-5 md:h-5 ml-2 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                                    </svg>
+                                {% else %}
+                                    <svg class="w-4 h-4 md:w-5 md:h-5 ml-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                    </svg>
+                                {% endif %}
+                                <span class="text-sm md:text-base">{{ message }}</span>
+                            </div>
+                            <button onclick="this.parentElement.parentElement.style.display='none'" class="text-gray-500 hover:text-gray-700">
+                                <svg class="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- ---------- محتوای اصلی ---------- -->
+    <main class="p-4 md:p-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- ---------- اسکریپت برای منوی موبایل و ساعت ---------- -->
+    <script>
+        // منوی موبایل
+        document.getElementById('menuBtn').addEventListener('click', function() {
+            const menu = document.getElementById('navMenu');
+            menu.classList.toggle('hidden');
+        });
+
+        // پنهان کردن خودکار پیام‌ها بعد از 5 ثانیه
+        document.addEventListener('DOMContentLoaded', function() {
+            const flashMessages = document.querySelectorAll('.container.mx-auto .bg-');
+            flashMessages.forEach(function(message) {
+                setTimeout(function() {
+                    message.style.transition = 'opacity 0.5s ease';
+                    message.style.opacity = '0';
+                    setTimeout(function() {
+                        if (message.parentElement) {
+                            message.parentElement.remove();
+                        }
+                    }, 500);
+                }, 5000);
+            });
+        });
+
+        // 🕒 تابع نمایش ساعت و تاریخ شمسی
+   // 🆕 تابع تصحیح شده برای نمایش ساعت و تاریخ
+function updatePersianDateTime() {
+    const now = new Date();
+    
+    // تبدیل صحیح به تاریخ شمسی
+    const jalaliDate = new Intl.DateTimeFormat('fa-IR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'long',
+        timeZone: 'Asia/Tehran'  // 🆕 اضافه کردن timeZone
+    }).format(now);
+    
+    // فرمت زمان
+    const time = now.toLocaleTimeString('fa-IR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: 'Asia/Tehran'  // 🆕 اضافه کردن timeZone
+    });
+    
+    // نمایش در صفحه
+    document.getElementById('current-time').textContent = time;
+    document.getElementById('current-date').textContent = jalaliDate;
+}
+
+        // به روزرسانی هر ثانیه
+        updatePersianDateTime();
+        setInterval(updatePersianDateTime, 1000);
+    </script>
+
+</body>
+</html>

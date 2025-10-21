@@ -1,0 +1,247 @@
+﻿﻿{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+    <h2 class="text-2xl font-bold mb-6 text-right">گزارش شهریه‌ها</h2>
+
+    <!-- فیلترها -->
+    <form method="get" class="bg-white p-6 rounded shadow mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-right mb-4">
+            <div>
+                <label class="block mb-1 text-sm font-medium">ماه</label>
+                <select name="month" class="w-full border rounded px-2 py-1 text-right text-sm">
+                    <option value="">همه ماه‌ها</option>
+                    <option value="1" {% if month == "1" %}selected{% endif %}>فروردین</option>
+                    <option value="2" {% if month == "2" %}selected{% endif %}>اردیبهشت</option>
+                    <option value="3" {% if month == "3" %}selected{% endif %}>خرداد</option>
+                    <option value="4" {% if month == "4" %}selected{% endif %}>تیر</option>
+                    <option value="5" {% if month == "5" %}selected{% endif %}>مرداد</option>
+                    <option value="6" {% if month == "6" %}selected{% endif %}>شهریور</option>
+                    <option value="7" {% if month == "7" %}selected{% endif %}>مهر</option>
+                    <option value="8" {% if month == "8" %}selected{% endif %}>آبان</option>
+                    <option value="9" {% if month == "9" %}selected{% endif %}>آذر</option>
+                    <option value="10" {% if month == "10" %}selected{% endif %}>دی</option>
+                    <option value="11" {% if month == "11" %}selected{% endif %}>بهمن</option>
+                    <option value="12" {% if month == "12" %}selected{% endif %}>اسفند</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block mb-1 text-sm font-medium">سال</label>
+                <select name="year" class="w-full border rounded px-2 py-1 text-right text-sm">
+                    <option value="">همه سال‌ها</option>
+                    <option value="1400" {% if year == "1400" %}selected{% endif %}>1400</option>
+                    <option value="1401" {% if year == "1401" %}selected{% endif %}>1401</option>
+                    <option value="1402" {% if year == "1402" %}selected{% endif %}>1402</option>
+                    <option value="1403" {% if year == "1403" %}selected{% endif %}>1403</option>
+                    <option value="1404" {% if year == "1404" %}selected{% endif %}>1404</option>
+                    <option value="1405" {% if year == "1405" %}selected{% endif %}>1405</option>
+                    <option value="1406" {% if year == "1406" %}selected{% endif %}>1406</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block mb-1 text-sm font-medium">سانس</label>
+                <select name="session_id" class="w-full border rounded px-2 py-1 text-right text-sm">
+                    <option value="">همه سانس‌ها</option>
+                    {% for s in sessions %}
+                        <option value="{{ s.session_id }}" {% if session_filter == s.session_id|string %}selected{% endif %}>{{ s.coach_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block mb-1 text-sm font-medium">وضعیت پرداخت</label>
+                <select name="status" class="w-full border rounded px-2 py-1 text-right text-sm">
+                    <option value="">همه وضعیت‌ها</option>
+                    <option value="paid" {% if payment_status == 'paid' %}selected{% endif %}>پرداخت شده</option>
+                    <option value="unpaid" {% if payment_status == 'unpaid' %}selected{% endif %}>پرداخت نشده</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-right">
+            <div>
+                <label class="block mb-1 text-sm font-medium">جستجو:</label>
+                <input type="text" name="search" placeholder="نام، فامیل یا کد ملی"
+                       value="{{ search_query }}" class="p-2 border rounded w-full text-right">
+            </div>
+            <div class="flex items-end space-x-2 space-x-reverse">
+                <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 text-sm">اعمال فیلتر</button>
+                <a href="{{ url_for('payments.payments_report') }}" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 text-sm">حذف فیلتر</a>
+            </div>
+        </div>
+    </form>
+
+    <!-- دکمه پرینت -->
+    <div class="text-center mb-4">
+        <button onclick="window.print()" class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600">
+            🖨️ پرینت گزارش شهریه
+        </button>
+    </div>
+
+    <!-- جدول گزارش -->
+    <div class="overflow-x-auto bg-white rounded shadow">
+        <table class="w-full text-right">
+            <thead class="bg-gray-200">
+                <tr>
+                    <th class="p-3 border">نام و نام خانوادگی</th>
+                    <th class="p-3 border">کد ملی</th>
+                    <th class="p-3 border">سانس</th>
+                    <th class="p-3 border">ماه و سال</th>
+                    <th class="p-3 border">مبلغ (تومان)</th>
+                    <th class="p-3 border">کد پیگیری</th>
+                    <th class="p-3 border">تاریخ پرداخت</th>
+                    <th class="p-3 border">وضعیت پرداخت</th>
+                    <th class="p-3 border">آخرین ماه معوقه</th>
+                    <th class="p-3 border">تعداد معوقه</th>
+                    <th class="p-3 border">وضعیت کلی</th>
+                    <th class="p-3 border">عملیات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in members %}
+                <tr class="border-t hover:bg-gray-50">
+                    <td class="p-3 border">{{ m.name }} {{ m.family_name }}</td>
+                    <td class="p-3 border">{{ m.national_id }}</td>
+                    <td class="p-3 border">{{ m.session_name }}</td>
+                    <td class="p-3 border">
+                        {% if m.month and m.year %}
+                            {% set month_names = {
+                                '1': 'فروردین', '2': 'اردیبهشت', '3': 'خرداد',
+                                '4': 'تیر', '5': 'مرداد', '6': 'شهریور',
+                                '7': 'مهر', '8': 'آبان', '9': 'آذر',
+                                '10': 'دی', '11': 'بهمن', '12': 'اسفند'
+                            } %}
+                            {{ month_names.get(m.month|string, m.month) }} {{ m.year }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="p-3 border">
+                        {% if m.amount %}
+                            {{ "{:,}".format(m.amount|int) }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    
+                    <!-- ستون کد پیگیری -->
+                    <td class="p-3 border">
+                        {% if m.tracking_code %}
+                            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-mono dir-ltr">
+                                {{ m.tracking_code }}
+                            </span>
+                        {% else %}
+                            <span class="text-gray-400">-</span>
+                        {% endif %}
+                    </td>
+                    
+                    <td class="p-3 border">{{ m.payment_date_jalali }}</td>
+                    <td class="p-3 border">
+                        {% if m.payment_status == 'paid' %}
+                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">پرداخت شده</span>
+                        {% else %}
+                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">پرداخت نشده</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- ستون‌های جدید وضعیت معوقه -->
+                    <td class="p-3 border">
+                        {% if m.overdue_count > 0 %}
+                            {% set month_names = {
+                                '1': 'فروردین', '2': 'اردیبهشت', '3': 'خرداد',
+                                '4': 'تیر', '5': 'مرداد', '6': 'شهریور',
+                                '7': 'مهر', '8': 'آبان', '9': 'آذر',
+                                '10': 'دی', '11': 'بهمن', '12': 'اسفند'
+                            } %}
+                            {{ month_names.get(m.last_overdue_month|string, m.last_overdue_month) }} {{ m.last_overdue_year }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    
+                    <td class="p-3 border">
+                        {% if m.overdue_count > 0 %}
+                            <span class="bg-red-100 text-red-800 px-2 py-1 rounded text-sm">{{ m.overdue_count }} ماه</span>
+                        {% else %}
+                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">۰ ماه</span>
+                        {% endif %}
+                    </td>
+                    
+                    <td class="p-3 border">
+                        {% if m.overdue_status == 'current' %}
+                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">✅ جاری</span>
+                        {% elif m.overdue_status == 'warning' %}
+                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">⚠️ معوقه</span>
+                        {% else %}
+                            <span class="bg-red-100 text-red-800 px-2 py-1 rounded text-sm">🔴 اختلال</span>
+                        {% endif %}
+                    </td>
+                    
+                    <td class="p-3 border">
+                        {% if m.payment_id %}
+                            <a href="{{ url_for('payments.delete_payment', payment_id=m.payment_id) }}" 
+                               class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm"
+                               onclick="return confirm('آیا از حذف پرداخت {{ m.name }} {{ m.family_name }} برای ماه {{ month_names.get(m.month|string, m.month) }} سال {{ m.year }} مطمئن هستید؟')">
+                                حذف
+                            </a>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- اگر هیچ رکوردی وجود نداشت -->
+    {% if not members %}
+    <div class="text-center py-8 text-gray-500 bg-white rounded shadow mt-4">
+        هیچ داده‌ای برای نمایش وجود ندارد.
+    </div>
+    {% endif %}
+</div>
+
+<!-- استایل مخصوص پرینت -->
+<style>
+@media print {
+    nav, form, button, .bg-gray-200 th { 
+        display: none !important; 
+    }
+    body { 
+        background: white !important; 
+        font-size: 12px;
+    }
+    .container {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+    }
+    table { 
+        width: 100% !important; 
+        border-collapse: collapse;
+    }
+    th, td { 
+        border: 1px solid #000 !important; 
+        padding: 6px;
+        text-align: right;
+    }
+    th {
+        background-color: #f0f0f0 !important;
+    }
+    .dir-ltr {
+        direction: ltr !important;
+        text-align: left !important;
+    }
+}
+
+/* استایل برای کد پیگیری */
+.dir-ltr {
+    direction: ltr;
+    text-align: left;
+    font-family: 'Courier New', monospace;
+}
+</style>
+{% endblock %}

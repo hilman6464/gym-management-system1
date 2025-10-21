@@ -1,0 +1,266 @@
+﻿<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>ثبت پرداخت شهریه</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-6xl mx-auto bg-white p-6 rounded shadow">
+        <!-- دکمه بازگشت به خانه -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-right flex-1">💰 ثبت پرداخت شهریه</h1>
+            <a href="{{ url_for('index') }}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex items-center gap-2 text-sm">
+                <span>🏠</span>
+                <span>بازگشت به خانه</span>
+            </a>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="mb-4 p-3 rounded {% if category == 'success' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- ---------------- بخش فیلتر و جستجوی پیشرفته ---------------- -->
+        <div class="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
+            <h2 class="text-lg font-bold mb-3 text-right">جستجوی پیشرفته اعضا</h2>
+            
+            <form method="GET" class="flex flex-col md:flex-row gap-4 items-end text-right">
+                <!-- فیلتر باشگاه -->
+                <div class="flex-1 w-full md:w-auto">
+                    <label class="block mb-1 text-sm font-medium">باشگاه</label>
+                    <select name="club_filter" id="clubFilter" class="w-full border rounded px-2 py-1 text-right text-sm">
+                        <option value="">همه باشگاه‌ها</option>
+                        {% for c in clubs %}
+                            <option value="{{ c['club_id'] }}" {% if club_filter == c['club_id']|string %}selected{% endif %}>{{ c['name'] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- فیلتر سانس -->
+                <div class="flex-1 w-full md:w-auto">
+                    <label class="block mb-1 text-sm font-medium">سانس</label>
+                    <select name="session_filter" id="sessionFilter" class="w-full border rounded px-2 py-1 text-right text-sm">
+                        <option value="">همه سانس‌ها</option>
+                        {% for s in all_sessions %}
+                            <option value="{{ s['session_id'] }}" {% if session_filter == s['session_id']|string %}selected{% endif %}>
+                                {{ s['coach_name'] }} - {{ s['class_time'] }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- جستجوی یکپارچه -->
+                <div class="flex-1 w-full md:w-auto">
+                    <label class="block mb-1 text-sm font-medium">جستجو (نام، نام خانوادگی، کد ملی)</label>
+                    <input type="text" name="search" placeholder="عبارت مورد نظر را وارد کنید..." 
+                           value="{{ search_query }}" class="w-full border rounded px-2 py-1 text-right text-sm">
+                </div>
+                
+                <!-- دکمه‌ها -->
+                <div class="flex space-x-2 space-x-reverse">
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm">اعمال فیلتر</button>
+                    <a href="{{ url_for('payments.add_payment') }}" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 text-sm">حذف فیلتر</a>
+                </div>
+            </form>
+        </div>
+        
+        <!-- ---------------- فرم اصلی ثبت پرداخت ---------------- -->
+        <form method="POST" class="space-y-4">
+            <div class="flex flex-col md:flex-row md:space-x-4 md:space-x-reverse">
+                <div class="flex-1">
+                    <label class="block mb-1 text-right font-medium">عضو</label>
+                    <select name="member_id" class="w-full border rounded px-2 py-1 text-right" required>
+                        <option value="">انتخاب عضو</option>
+                        {% for m in filtered_members %}
+                            <option value="{{ m['id'] }}">
+                                {{ m['name'] }} {{ m['family_name'] }} - {{ m['national_id'] }} - باشگاه: {{ m['club_name'] }} - سانس: {{ m['session_name'] }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-sm text-gray-500 mt-1 text-right">تعداد اعضا: {{ filtered_members|length }} نفر</p>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row md:space-x-4 md:space-x-reverse">
+                <div class="flex-1">
+                    <label class="block mb-1 text-right font-medium">مبلغ (تومان)</label>
+                    <input type="number" name="amount" class="w-full border rounded px-2 py-1 text-right" placeholder="مبلغ را وارد کنید" required>
+                </div>
+                
+                <!-- کد پیگیری -->
+                <div class="flex-1">
+                    <label class="block mb-1 text-right font-medium">کد پیگیری فیش (اختیاری)</label>
+                    <input type="text" name="tracking_code" 
+                           class="w-full border rounded px-2 py-1 text-right tracking-code-input" 
+                           placeholder="کد پیگیری بانکی" 
+                           maxlength="50"
+                           onblur="checkTrackingCode(this.value)">
+                    <p class="text-sm text-gray-500 mt-1 text-right">
+                        برای جلوگیری از ثبت تکراری فیش‌ها
+                        <span id="tracking-code-status" class="hidden text-xs"></span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- بخش ماه و سال شهریه -->
+            <div class="flex flex-col md:flex-row md:space-x-4 md:space-x-reverse">
+                <div class="flex-1">
+                    <label class="block mb-1 text-right font-medium">ماه شهریه</label>
+                    <select name="month" class="w-full border rounded px-2 py-1 text-right" required>
+                        <option value="">انتخاب ماه</option>
+                        <option value="1">فروردین</option>
+                        <option value="2">اردیبهشت</option>
+                        <option value="3">خرداد</option>
+                        <option value="4">تیر</option>
+                        <option value="5">مرداد</option>
+                        <option value="6">شهریور</option>
+                        <option value="7">مهر</option>
+                        <option value="8">آبان</option>
+                        <option value="9">آذر</option>
+                        <option value="10">دی</option>
+                        <option value="11">بهمن</option>
+                        <option value="12">اسفند</option>
+                    </select>
+                </div>
+               <div class="flex-1">
+                    <label class="block mb-1 text-right font-medium">سال شهریه</label>
+                    <select name="year" class="w-full border rounded px-2 py-1 text-right" required>
+                        <option value="">انتخاب سال</option>
+                        <option value="1404">1404</option>
+                        <option value="1405">1405</option>
+                        <option value="1406">1406</option>
+                        <option value="1407">1407</option>
+                        <option value="1408">1408</option>
+                        <option value="1409">1409</option>
+                        <option value="1410">1410</option>
+                        <option value="1411">1411</option>
+                        <option value="1412">1412</option>
+                        <option value="1413">1413</option>
+                        <option value="1414">1414</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block mb-1 text-right font-medium">تاریخ پرداخت (شمسی)</label>
+                <input type="text" name="payment_date" placeholder="1404/07/01" class="w-full border rounded px-2 py-1 text-right" required>
+                <p class="text-sm text-gray-500 mt-1 text-right">فرمت: سال/ماه/روز - مثال: 1404/07/01</p>
+            </div>
+            
+            <div class="flex space-x-4 space-x-reverse">
+                <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">ثبت پرداخت</button>
+                <a href="{{ url_for('payments.payments_report') }}" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600">مشاهده گزارش</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+    // مدیریت فیلتر سانس بر اساس باشگاه
+    document.addEventListener('DOMContentLoaded', function() {
+        const clubFilter = document.getElementById('clubFilter');
+        const sessionFilter = document.getElementById('sessionFilter');
+        
+        // تابع برای بارگذاری سانس‌های یک باشگاه
+        function loadSessionsForClub(clubId) {
+            if (!clubId) {
+                // اگر باشگاه انتخاب نشده، همه سانس‌ها رو نشون بده
+                sessionFilter.innerHTML = '<option value="">همه سانس‌ها</option>';
+                {% for s in all_sessions %}
+                    sessionFilter.innerHTML += '<option value="{{ s.session_id }}" {% if session_filter == s.session_id|string %}selected{% endif %}>{{ s.coach_name }} - {{ s.class_time }}</option>';
+                {% endfor %}
+                return;
+            }
+            
+            // درخواست AJAX برای دریافت سانس‌های باشگاه انتخاب شده
+            fetch(`/payments/api/sessions/${clubId}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('خطا در دریافت سانس‌ها');
+                    return response.json();
+                })
+                .then(sessions => {
+                    sessionFilter.innerHTML = '<option value="">همه سانس‌ها</option>';
+                    sessions.forEach(session => {
+                        const option = document.createElement('option');
+                        option.value = session.session_id;
+                        option.textContent = `${session.coach_name} - ${session.class_time}`;
+                        
+                        // اگر این سانس از قبل انتخاب شده بود، selected کن
+                        if ("{{ session_filter }}" == session.session_id) {
+                            option.selected = true;
+                        }
+                        
+                        sessionFilter.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('خطا در بارگذاری سانس‌ها:', error);
+                    sessionFilter.innerHTML = '<option value="">خطا در بارگذاری سانس‌ها</option>';
+                });
+        }
+        
+        // رویداد تغییر باشگاه
+        if (clubFilter) {
+            clubFilter.addEventListener('change', function() {
+                const clubId = this.value;
+                loadSessionsForClub(clubId);
+            });
+        }
+        
+        // بارگذاری اولیه اگر باشگاه از قبل انتخاب شده
+        const initialClubId = "{{ club_filter }}";
+        if (initialClubId) {
+            loadSessionsForClub(initialClubId);
+        }
+    });
+
+    // تابع بررسی کد پیگیری تکراری
+    function checkTrackingCode(trackingCode) {
+        const statusElement = document.getElementById('tracking-code-status');
+        
+        if (!trackingCode.trim()) {
+            statusElement.classList.add('hidden');
+            return;
+        }
+        
+        // نمایش loading
+        statusElement.innerHTML = '⏳ در حال بررسی...';
+        statusElement.classList.remove('hidden', 'text-green-600', 'text-red-600');
+        statusElement.classList.add('text-yellow-600');
+        
+        // درخواست به سرور برای بررسی کد پیگیری
+        fetch('/payments/check-tracking-code', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                tracking_code: trackingCode
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.exists) {
+                statusElement.innerHTML = `❌ این کد قبلاً در ${data.existing_date} برای ${data.member_name} ثبت شده`;
+                statusElement.classList.remove('text-yellow-600');
+                statusElement.classList.add('text-red-600');
+            } else {
+                statusElement.innerHTML = '✅ کد پیگیری قابل استفاده است';
+                statusElement.classList.remove('text-yellow-600');
+                statusElement.classList.add('text-green-600');
+            }
+        })
+        .catch(error => {
+            statusElement.innerHTML = '⚠️ خطا در بررسی کد پیگیری';
+            statusElement.classList.remove('text-yellow-600');
+            statusElement.classList.add('text-red-600');
+        });
+    }
+    </script>
+</body>
+</html>

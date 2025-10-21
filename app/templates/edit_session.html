@@ -1,0 +1,93 @@
+﻿{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+    <h1 class="text-2xl font-bold mb-6 text-right">✏️ ویرایش سانس</h1>
+
+    <form method="POST" class="bg-white p-6 rounded shadow max-w-2xl mx-auto">
+        <div class="space-y-4">
+            <!-- اطلاعات باشگاه -->
+            <div class="bg-blue-50 p-3 rounded">
+                <label class="block mb-2 text-right font-medium text-blue-600">باشگاه</label>
+                <p class="text-right text-blue-700">{{ session.club_name }}</p>
+            </div>
+
+            <!-- نام مربی -->
+            <div>
+                <label class="block mb-2 text-right font-medium">نام مربی *</label>
+                <input type="text" name="coach_name" value="{{ session.coach_name }}"
+                       class="w-full border border-gray-300 rounded px-3 py-2 text-right" 
+                       placeholder="نام مربی را وارد کنید" required>
+            </div>
+
+            <!-- نوع روزها -->
+            <div>
+                <label class="block mb-2 text-right font-medium">نوع روزهای برگزاری *</label>
+                <select name="day_type" class="w-full border border-gray-300 rounded px-3 py-2 text-right" required>
+                    <option value="">انتخاب کنید</option>
+                    <option value="even" {% if session.day_type == 'even' %}selected{% endif %}>
+                        زوج (شنبه، دوشنبه، چهارشنبه)
+                    </option>
+                    <option value="odd" {% if session.day_type == 'odd' %}selected{% endif %}>
+                        فرد (یکشنبه، سه‌شنبه، پنجشنبه)
+                    </option>
+                    <option value="weekend" {% if session.day_type == 'weekend' %}selected{% endif %}>
+                        آخر هفته (پنجشنبه، جمعه)
+                    </option>
+                </select>
+            </div>
+
+            <!-- ساعت برگزاری -->
+            <div>
+                <label class="block mb-2 text-right font-medium">ساعت برگزاری *</label>
+                <input type="text" name="class_time" value="{{ session.class_time }}"
+                       class="w-full border border-gray-300 rounded px-3 py-2 text-right" 
+                       placeholder="مثال: ۱۷:۰۰ تا ۱۹:۰۰" required>
+                <p class="text-sm text-gray-500 mt-1 text-right">فرمت: ساعت شروع تا ساعت پایان</p>
+            </div>
+
+            <!-- نمایش روزها -->
+            <div class="bg-gray-50 p-3 rounded">
+                <label class="block mb-2 text-right font-medium text-gray-600">روزهای برگزاری</label>
+                <p class="text-right text-gray-700" id="days-preview">
+                    {% if session.day_type == 'even' %}
+                        شنبه، دوشنبه، چهارشنبه
+                    {% elif session.day_type == 'odd' %}
+                        یکشنبه، سه‌شنبه، پنجشنبه
+                    {% elif session.day_type == 'weekend' %}
+                        پنجشنبه، جمعه
+                    {% else %}
+                        پس از انتخاب نوع روزها، روزهای مربوطه اینجا نمایش داده می‌شود
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- دکمه‌ها -->
+        <div class="mt-6 flex space-x-4 space-x-reverse">
+            <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">
+                ثبت تغییرات
+            </button>
+            <a href="{{ url_for('clubs.club_sessions', club_id=session.club_id) }}" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600">
+                انصراف
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+// نمایش روزها بر اساس انتخاب کاربر
+document.querySelector('select[name="day_type"]').addEventListener('change', function() {
+    const daysPreview = document.getElementById('days-preview');
+    const dayType = this.value;
+    
+    const daysMap = {
+        'even': 'شنبه، دوشنبه، چهارشنبه',
+        'odd': 'یکشنبه، سه‌شنبه، پنجشنبه',
+        'weekend': 'پنجشنبه، جمعه'
+    };
+    
+    daysPreview.textContent = daysMap[dayType] || 'پس از انتخاب نوع روزها، روزهای مربوطه اینجا نمایش داده می‌شود';
+});
+</script>
+{% endblock %}

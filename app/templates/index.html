@@ -1,0 +1,30 @@
+﻿{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-right">
+
+    <!-- کارت تعداد اعضا -->
+    <div class="bg-white shadow rounded p-6 text-center">
+        <h2 class="text-2xl font-bold mb-2">تعداد اعضا</h2>
+        <p class="text-4xl font-extrabold text-blue-600">{{ total_members }}</p>
+        <a href="{{ url_for('members.members') }}" class="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">مشاهده اعضا</a>
+    </div>
+
+    <!-- کارت تعداد باشگاه‌ها -->
+    <div class="bg-white shadow rounded p-6 text-center">
+        <h2 class="text-2xl font-bold mb-2">تعداد باشگاه‌ها</h2>
+        <p class="text-4xl font-extrabold text-green-600">{{ total_clubs }}</p>
+        <a href="{{ url_for('clubs.clubs') }}" class="mt-4 inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">مشاهده باشگاه‌ها</a>
+    </div>
+
+</div>
+
+<!-- دکمه‌های سریع دو به دو کنار هم -->
+<div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 text-right">
+    <a href="{{ url_for('members.add_member') }}" class="bg-blue-500 text-white px-6 py-3 rounded shadow hover:bg-blue-600 text-center">افزودن عضو جدید</a>
+    <a href="{{ url_for('clubs.add_club') }}" class="bg-green-500 text-white px-6 py-3 rounded shadow hover:bg-green-600 text-center">افزودن باشگاه جدید</a>
+    <a href="{{ url_for('reports.advanced_report') }}" class="bg-yellow-500 text-white px-6 py-3 rounded shadow hover:bg-yellow-600 text-center">گزارش پیشرفته</a>
+</div>
+
+{% endblock %}

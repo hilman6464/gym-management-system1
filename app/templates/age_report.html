@@ -1,0 +1,227 @@
+﻿﻿{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+    <h2 class="text-2xl font-bold mb-6 text-right">🎯 گزارش رده‌های سنی</h2>
+
+    <!-- آمار کلی -->
+    <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6 text-right">
+        {% for category, count in age_stats.items() %}
+        <div class="bg-white p-4 rounded-lg shadow text-center">
+            <div class="text-lg font-bold text-blue-600">{{ count }}</div>
+            <div class="text-sm text-gray-600">{{ category }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- فیلترهای پیشرفته -->
+    <form method="get" class="bg-white p-6 rounded shadow mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-right mb-4">
+            <!-- فیلتر باشگاه و سانس -->
+            <div>
+                <label class="block mb-1 text-sm font-medium">باشگاه</label>
+                <select name="club_id" id="clubSelect" class="w-full border rounded px-2 py-1 text-right text-sm" onchange="loadSessions(this.value)">
+                    <option value="">همه باشگاه‌ها</option>
+                    {% for club in clubs %}
+                        <option value="{{ club.club_id }}" {% if club_filter == club.club_id|string %}selected{% endif %}>{{ club.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block mb-1 text-sm font-medium">سانس</label>
+                <select name="session_id" id="sessionSelect" class="w-full border rounded px-2 py-1 text-right text-sm" {% if not club_filter %}disabled{% endif %}>
+                    <option value="">همه سانس‌ها</option>
+                    {% if club_filter %}
+                        {% for session in sessions %}
+                            {% if session.club_id|string == club_filter %}
+                                <option value="{{ session.session_id }}" {% if session_filter == session.session_id|string %}selected{% endif %}>
+                                    {{ session.coach_name }} - {{ session.class_time }}
+                                </option>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <option value="">ابتدا باشگاه را انتخاب کنید</option>
+                    {% endif %}
+                </select>
+            </div>
+
+            <!-- فیلتر تاریخ -->
+            <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block mb-1 text-sm font-medium">از تاریخ تولد (شمسی)</label>
+                    <input type="text" name="start_date" placeholder="1380/01/01" 
+                           value="{{ start_date }}" class="w-full border rounded px-2 py-1 text-right text-sm">
+                </div>
+                <div>
+                    <label class="block mb-1 text-sm font-medium">تا تاریخ تولد (شمسی)</label>
+                    <input type="text" name="end_date" placeholder="1400/12/29" 
+                           value="{{ end_date }}" class="w-full border rounded px-2 py-1 text-right text-sm">
+                </div>
+            </div>
+
+            <div>
+                <label class="block mb-1 text-sm font-medium">رده سنی</label>
+                <select name="age_category" class="w-full border rounded px-2 py-1 text-right text-sm">
+                    <option value="">همه رده‌ها</option>
+                    {% for category in age_categories %}
+                        <option value="{{ category }}" {% if age_category_filter == category %}selected{% endif %}>{{ category }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block mb-1 text-sm font-medium">کمربند</label>
+                <select name="belt" class="w-full border rounded px-2 py-1 text-right text-sm">
+                    <option value="">همه کمربندها</option>
+                    {% for b in belts %}
+                        <option value="{{ b }}" {% if belt_filter == b %}selected{% endif %}>{{ b }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="flex space-x-2 space-x-reverse justify-start">
+            <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 text-sm">اعمال فیلتر</button>
+            <a href="{{ url_for('age_categories.age_report') }}" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 text-sm">حذف فیلتر</a>
+        </div>
+        
+        <p class="text-sm text-gray-500 mt-2 text-right">فرمت تاریخ: سال/ماه/روز - مثال: 1380/01/01</p>
+    </form>
+
+    <!-- دکمه پرینت -->
+    <div class="text-center mb-4">
+        <button onclick="window.print()" class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600">
+            🖨️ پرینت گزارش رده‌های سنی
+        </button>
+    </div>
+
+    <!-- جدول گزارش -->
+    <div class="overflow-x-auto bg-white rounded shadow">
+        <table class="w-full text-right">
+            <thead class="bg-gray-200">
+                <tr>
+                    <th class="p-3 border">نام و نام خانوادگی</th>
+                    <th class="p-3 border">کد ملی</th>
+                    <th class="p-3 border">تاریخ تولد</th>
+                    <th class="p-3 border">رده سنی</th>
+                    <th class="p-3 border">کمربند</th>
+                    <th class="p-3 border">باشگاه</th>
+                    <th class="p-3 border">سانس</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in members %}
+                <tr class="border-t hover:bg-gray-50">
+                    <td class="p-3 border">{{ m.name }} {{ m.family_name }}</td>
+                    <td class="p-3 border">{{ m.national_id }}</td>
+                    <td class="p-3 border">{{ m.birth_date_jalali }}</td>
+                    <td class="p-3 border">
+                        <span class="{% if m.age_category == 'خردسالان' %}bg-blue-100 text-blue-800
+                                   {% elif m.age_category == 'نونهالان' %}bg-green-100 text-green-800
+                                   {% elif m.age_category == 'نوجوانان' %}bg-yellow-100 text-yellow-800
+                                   {% elif m.age_category == 'جوانان' %}bg-orange-100 text-orange-800
+                                   {% elif m.age_category == 'بزرگسالان' %}bg-red-100 text-red-800
+                                   {% else %}bg-gray-100 text-gray-800{% endif %} px-2 py-1 rounded text-sm">
+                            {{ m.age_category }}
+                        </span>
+                    </td>
+                    <td class="p-3 border">{{ m.belt }}</td>
+                    <td class="p-3 border">{{ m.club_name or '-' }}</td>
+                    <td class="p-3 border">{{ m.session_name or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- اگر هیچ رکوردی وجود نداشت -->
+    {% if not members %}
+    <div class="text-center py-8 text-gray-500 bg-white rounded shadow mt-4">
+        هیچ داده‌ای برای نمایش وجود ندارد.
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// تابع برای بارگذاری سانس‌های یک باشگاه
+function loadSessions(clubId) {
+    const sessionSelect = document.getElementById('sessionSelect');
+    
+    if (!clubId) {
+        sessionSelect.innerHTML = '<option value="">ابتدا باشگاه را انتخاب کنید</option>';
+        sessionSelect.disabled = true;
+        return;
+    }
+    
+    // نمایش loading
+    sessionSelect.innerHTML = '<option value="">در حال بارگذاری سانس‌ها...</option>';
+    sessionSelect.disabled = false;
+    
+    // درخواست AJAX برای دریافت سانس‌های باشگاه انتخاب شده
+    fetch(`/age_categories/api/sessions/${clubId}`)
+        .then(response => {
+            if (!response.ok) throw new Error('خطا در دریافت سانس‌ها');
+            return response.json();
+        })
+        .then(sessions => {
+            if (sessions.length === 0) {
+                sessionSelect.innerHTML = '<option value="">هیچ سانسی برای این باشگاه وجود ندارد</option>';
+            } else {
+                sessionSelect.innerHTML = '<option value="">همه سانس‌ها</option>';
+                sessions.forEach(session => {
+                    const option = document.createElement('option');
+                    option.value = session.session_id;
+                    option.textContent = `${session.coach_name} - ${session.class_time}`;
+                    sessionSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('خطا در بارگذاری سانس‌ها:', error);
+            sessionSelect.innerHTML = '<option value="">خطا در بارگذاری سانس‌ها</option>';
+        });
+}
+
+// بارگذاری اولیه اگر باشگاه از قبل انتخاب شده
+document.addEventListener('DOMContentLoaded', function() {
+    const clubSelect = document.getElementById('clubSelect');
+    if (clubSelect.value) {
+        loadSessions(clubSelect.value);
+    }
+});
+</script>
+
+<!-- استایل مخصوص پرینت -->
+<style>
+@media print {
+    nav, form, button, .bg-gray-200 th { 
+        display: none !important; 
+    }
+    body { 
+        background: white !important; 
+        font-size: 12px;
+    }
+    .container {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+    }
+    table { 
+        width: 100% !important; 
+        border-collapse: collapse;
+    }
+    th, td { 
+        border: 1px solid #000 !important; 
+        padding: 6px;
+        text-align: right;
+    }
+    th {
+        background-color: #f0f0f0 !important;
+    }
+    .grid.grid-cols-2 {
+        display: none !important;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,76 @@
+﻿{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+    <h1 class="text-2xl font-bold mb-6 text-right">🏋️ مدیریت باشگاه‌ها</h1>
+
+    <a href="{{ url_for('clubs.add_club') }}" class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 mb-6 inline-block">
+        ➕ افزودن باشگاه جدید
+    </a>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for club in clubs %}
+        <div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+            <div class="bg-blue-600 text-white p-4">
+                <h3 class="text-xl font-bold text-right">{{ club.name }}</h3>
+            </div>
+            
+            <div class="p-4">
+                <div class="space-y-2 text-right">
+                    {% if club.address %}
+                    <p class="text-gray-600">
+                        <span class="font-medium">آدرس:</span> {{ club.address }}
+                    </p>
+                    {% endif %}
+                    
+                    {% if club.phone %}
+                    <p class="text-gray-600">
+                        <span class="font-medium">تلفن:</span> {{ club.phone }}
+                    </p>
+                    {% endif %}
+                    
+                    <p class="text-gray-600">
+                        <span class="font-medium">تعداد سانس‌ها:</span> 
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">{{ club.session_count }}</span>
+                    </p>
+                    
+                    <p class="text-gray-500 text-sm">
+                        <span class="font-medium">تاریخ ایجاد:</span> {{ club.created_date }}
+                    </p>
+                </div>
+                
+                <div class="mt-4 flex flex-wrap gap-2 justify-end">
+                    <a href="{{ url_for('clubs.club_sessions', club_id=club.club_id) }}" 
+                       class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm">
+                        👁️ مشاهده سانس‌ها
+                    </a>
+                    <a href="{{ url_for('sessions.add_session', club_id=club.club_id) }}" 
+                       class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm">
+                        ➕ سانس جدید
+                    </a>
+                    <a href="{{ url_for('clubs.edit_club', club_id=club.club_id) }}" 
+                       class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 text-sm">
+                        ✏️ ویرایش
+                    </a>
+                    <a href="{{ url_for('clubs.delete_club', club_id=club.club_id) }}" 
+                       class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm"
+                       onclick="return confirm('آیا از حذف باشگاه «{{ club.name }}» مطمئن هستید؟')">
+                        🗑️ حذف
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not clubs %}
+    <div class="text-center py-12">
+        <div class="text-gray-400 text-6xl mb-4">🏋️</div>
+        <p class="text-gray-500 text-lg">هنوز باشگاهی ثبت نشده است.</p>
+        <a href="{{ url_for('clubs.add_club') }}" class="mt-4 inline-block bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600">
+            افزودن اولین باشگاه
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

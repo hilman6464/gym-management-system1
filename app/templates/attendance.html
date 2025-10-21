@@ -1,0 +1,887 @@
+﻿﻿{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+    <!-- دکمه بازگشت جمع‌وجور -->
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-right flex-1">📝 سیستم حضور و غیاب</h1>
+        <a href="{{ url_for('index') }}" class="bg-gray-500 text-white px-3 py-2 rounded hover:bg-gray-600 text-sm ml-4">
+            🏠 خانه
+        </a>
+    </div>
+
+    <!-- فیلترهای باشگاه و سانس -->
+    <div class="bg-white p-4 rounded shadow mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-right">
+            <!-- انتخاب باشگاه -->
+            <div>
+                <label class="block mb-1 text-sm font-medium">باشگاه</label>
+                <select id="clubSelect" class="w-full border rounded px-2 py-1 text-right text-sm">
+                    <option value="">انتخاب باشگاه</option>
+                    {% for club in clubs %}
+                    <option value="{{ club.club_id }}">{{ club.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- انتخاب سانس -->
+            <div>
+                <label class="block mb-1 text-sm font-medium">سانس</label>
+                <select id="sessionSelect" class="w-full border rounded px-2 py-1 text-right text-sm" disabled>
+                    <option value="">ابتدا باشگاه را انتخاب کنید</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- کنترل‌های ماه و سال - جمع‌وجور -->
+    <div class="bg-white p-4 rounded shadow mb-4">
+        <div class="grid grid-cols-2 gap-3 text-right">
+            <!-- انتخاب ماه -->
+            <div>
+                <label class="block mb-1 text-sm font-medium">ماه</label>
+                <select id="monthSelect" class="w-full border rounded px-2 py-1 text-right text-sm">
+                    <option value="1">فروردین</option>
+                    <option value="2">اردیبهشت</option>
+                    <option value="3">خرداد</option>
+                    <option value="4">تیر</option>
+                    <option value="5">مرداد</option>
+                    <option value="6">شهریور</option>
+                    <option value="7">مهر</option>
+                    <option value="8">آبان</option>
+                    <option value="9">آذر</option>
+                    <option value="10">دی</option>
+                    <option value="11">بهمن</option>
+                    <option value="12">اسفند</option>
+                </select>
+            </div>
+
+            <!-- انتخاب سال -->
+            <div>
+                <label class="block mb-1 text-sm font-medium">سال</label>
+                <select id="yearSelect" class="w-full border rounded px-2 py-1 text-right text-sm">
+                    <option value="1400">۱۴۰۰</option>
+                    <option value="1401">۱۴۰۱</option>
+                    <option value="1402">۱۴۰۲</option>
+                    <option value="1403">۱۴۰۳</option>
+                    <option value="1404">۱۴۰۴</option>
+                    <option value="1405">۱۴۰۵</option>
+                    <option value="1406">۱۴۰۶</option>
+                    <option value="1407">۱۴۰۷</option>
+                    <option value="1408">۱۴۰۸</option>
+                    <option value="1409">۱۴۰۹</option>
+                    <option value="1410">۱۴۱۰</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- دکمه بارگذاری -->
+    <div class="text-center mb-4">
+        <button id="loadBtn" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 text-sm" disabled>
+            بارگذاری حضور و غیاب
+        </button>
+    </div>
+
+    <!-- نمایش اطلاعات سانس -->
+    <div id="sessionInfo" class="bg-blue-50 p-3 rounded text-right mb-4 hidden">
+        <span id="sessionDetails"></span>
+    </div>
+
+    <!-- جدول حضورغیاب -->
+    <div id="attendanceTable" class="hidden">
+        <!-- اینجا جدول حضورغیاب نمایش داده می‌شه -->
+    </div>
+</div>
+
+<!-- استایل مخصوص هشدارها -->
+<style>
+/* دایره چشمک زن بزرگتر */
+.blink-red {
+    animation: blinkRed 1s infinite;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #dc2626;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: white;
+}
+
+@keyframes blinkRed {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+
+/* رنگ‌های هشدار */
+.alert-insurance-expired { 
+    background-color: #dc2626 !important; 
+    color: white !important; 
+    border: 1px solid #b91c1c !important; 
+}
+.alert-insurance-urgent { 
+    background-color: #ea580c !important; 
+    color: white !important; 
+    border: 1px solid #c2410c !important; 
+}
+.alert-birthday { 
+    background-color: #db2777 !important; 
+    color: white !important; 
+    border: 1px solid #be185d !important; 
+}
+.alert-belt-upgrade { 
+    background-color: #2563eb !important; 
+    color: white !important; 
+    border: 1px solid #1d4ed8 !important; 
+}
+.belt-expired { 
+    background-color: #dc2626 !important; 
+    color: white !important; 
+    border: 1px solid #b91c1c !important; 
+}
+
+/* استایل tooltip جدید */
+.alert-group {
+    position: relative;
+    display: inline-block;
+    margin: 0 2px;
+}
+
+.alert-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 8px;
+    background: #1f2937;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10000;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    pointer-events: none;
+    display: none;
+}
+
+.alert-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #1f2937;
+}
+
+.alert-group:hover .alert-tooltip {
+    display: block !important;
+}
+
+/* تضمین نمایش tooltip */
+.alert-tooltip {
+    z-index: 9999 !important;
+}
+
+.hidden {
+    display: none !important;
+}
+/* استایل‌های هشدار پرداخت */
+.payment-reminder { 
+    background-color: #fef3c7 !important; 
+    color: #d97706 !important; 
+    border: 1px solid #fde68a !important; 
+}
+.payment-overdue { 
+    background-color: #fecaca !important; 
+    color: #dc2626 !important; 
+    border: 1px solid #fca5a5 !important; 
+}
+.payment-missing { 
+    background-color: #d1d5db !important; 
+    color: #374151 !important; 
+    border: 1px solid #9ca3af !important; 
+}
+
+/* چشمک زن برای معوقه */
+.blink-red {
+    animation: blinkRed 1s infinite;
+}
+
+@keyframes blinkRed {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+</style>
+
+<script>
+// متغیرهای جهانی
+let currentDisplayMonth = {{ current_month }};
+let currentDisplayYear = {{ current_year }};
+let currentSessionId = null;
+let currentSessionText = '';
+
+// تنظیم اولیه منوها بر اساس تاریخ جاری
+document.addEventListener('DOMContentLoaded', function() {
+    // دریافت تاریخ امروز از سرور
+    window.todayJalali = {
+        year: {{ current_year }},
+        month: {{ current_month }}, 
+        day: {{ current_day }}
+    };
+
+    // تنظیم ماه و سال جاری در منوها
+    document.getElementById('monthSelect').value = currentDisplayMonth;
+    document.getElementById('yearSelect').value = currentDisplayYear;
+});
+
+// تابع بارگذاری داده‌های حضور و غیاب
+function loadAttendanceData() {
+    if (!currentSessionId) return;
+    
+    // گرفتن ماه و سال از منوها
+    const selectedMonth = parseInt(document.getElementById('monthSelect').value);
+    const selectedYear = parseInt(document.getElementById('yearSelect').value);
+    
+    // نمایش loading
+    const loadBtn = document.getElementById('loadBtn');
+    loadBtn.innerHTML = '⏳ در حال بارگذاری...';
+    loadBtn.disabled = true;
+    
+    // دریافت تاریخ‌های مجاز از API
+    fetch(`/attendance/api/calculate-dates/${currentSessionId}?month=${selectedMonth}&year=${selectedYear}`)
+        .then(response => {
+            if (!response.ok) throw new Error('خطا در دریافت تاریخ‌ها');
+            return response.json();
+        })
+        .then(data => {
+            // دریافت اعضای سانس
+            return fetch(`/attendance/api/attendance-members/${currentSessionId}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('خطا در دریافت اعضا');
+                    return response.json();
+                })
+                .then(members => {
+                    console.log("📊 داده‌های دریافت شده از API:", members);
+                    createAttendanceTable(members, data);
+                });
+        })
+        .catch(error => {
+            console.error('❌ خطا:', error);
+            showNotification(`خطا در بارگذاری اطلاعات: ${error.message}`, 'error');
+        })
+        .finally(() => {
+            loadBtn.innerHTML = 'بارگذاری حضور و غیاب';
+            loadBtn.disabled = false;
+        });
+}
+
+// بارگذاری سانس‌ها وقتی باشگاه انتخاب شد
+document.getElementById('clubSelect').addEventListener('change', function() {
+    const clubId = this.value;
+    const sessionSelect = document.getElementById('sessionSelect');
+    const loadBtn = document.getElementById('loadBtn');
+    
+    if (!clubId) {
+        sessionSelect.innerHTML = '<option value="">ابتدا باشگاه را انتخاب کنید</option>';
+        sessionSelect.disabled = true;
+        loadBtn.disabled = true;
+        document.getElementById('sessionInfo').classList.add('hidden');
+        return;
+    }
+    
+    // نمایش loading
+    sessionSelect.innerHTML = '<option value="">در حال بارگذاری سانس‌ها...</option>';
+    sessionSelect.disabled = false;
+    
+    // درخواست AJAX برای دریافت سانس‌ها
+    fetch(`/attendance/api/attendance-sessions/${clubId}`)
+        .then(response => response.json())
+        .then(sessions => {
+            if (sessions.length === 0) {
+                sessionSelect.innerHTML = '<option value="">هیچ سانسی برای این باشگاه وجود ندارد</option>';
+                loadBtn.disabled = true;
+                document.getElementById('sessionInfo').classList.add('hidden');
+            } else {
+                sessionSelect.innerHTML = '<option value="">انتخاب سانس</option>';
+                sessions.forEach(session => {
+                    const option = document.createElement('option');
+                    option.value = session.session_id;
+                    option.textContent = `${session.class_time} - ${session.coach_name} (${session.days_display})`;
+                    sessionSelect.appendChild(option);
+                });
+                loadBtn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading sessions:', error);
+            sessionSelect.innerHTML = '<option value="">خطا در بارگذاری سانس‌ها</option>';
+            loadBtn.disabled = true;
+            document.getElementById('sessionInfo').classList.add('hidden');
+        });
+});
+
+// فعال کردن دکمه بارگذاری وقتی سانس انتخاب شد
+document.getElementById('sessionSelect').addEventListener('change', function() {
+    const sessionId = this.value;
+    const loadBtn = document.getElementById('loadBtn');
+    const sessionInfo = document.getElementById('sessionInfo');
+    const sessionDetails = document.getElementById('sessionDetails');
+    
+    if (!sessionId) {
+        loadBtn.disabled = true;
+        sessionInfo.classList.add('hidden');
+        currentSessionId = null;
+        return;
+    }
+    
+    currentSessionId = sessionId;
+    currentSessionText = this.options[this.selectedIndex].textContent;
+    loadBtn.disabled = false;
+    
+    // 🔥 بارگذاری خودکار داده‌ها
+    loadAttendanceData();
+    
+    // دریافت اطلاعات سانس
+    fetch(`/attendance/api/session-details/${sessionId}`)
+        .then(response => response.json())
+        .then(session => {
+            sessionDetails.innerHTML = `
+                <strong>${session.club_name}</strong> - 
+                ${session.coach_name} - 
+                ${session.class_time} - 
+                ${session.days_display}
+            `;
+            sessionInfo.classList.remove('hidden');
+        })
+        .catch(error => {
+            console.error('Error loading session details:', error);
+            sessionInfo.classList.add('hidden');
+        });
+});
+
+// مدیریت دکمه بارگذاری
+document.getElementById('loadBtn').addEventListener('click', function() {
+    if (!currentSessionId) {
+        showNotification('لطفاً یک سانس انتخاب کنید', 'warning');
+        return;
+    }
+    loadAttendanceData();
+});
+
+// تغییر خودکار وقتی ماه یا سال عوض میشه
+document.getElementById('monthSelect').addEventListener('change', function() {
+    if (currentSessionId) {
+        loadAttendanceData();
+    }
+});
+
+document.getElementById('yearSelect').addEventListener('change', function() {
+    if (currentSessionId) {
+        loadAttendanceData();
+    }
+});
+
+// ==================== توابع ضروری برای نمایش اعضا ====================
+
+function createAttendanceTable(members, sessionData) {
+    const container = document.getElementById('attendanceTable');
+    
+    if (!members || members.length === 0) {
+        container.innerHTML = '<div class="text-center py-8 text-gray-500 bg-white rounded shadow">هیچ عضوی در این سانس وجود ندارد</div>';
+        container.classList.remove('hidden');
+        return;
+    }
+    
+    const dates = sessionData.dates;
+    
+    let html = `
+        <div class="bg-white rounded shadow overflow-hidden">
+            <div class="bg-green-600 text-white p-4">
+                <h3 class="text-xl font-bold text-right">${currentSessionText}</h3>
+                <div class="text-sm mt-1">${getMonthName(sessionData.month)} ${sessionData.year} - ${getDayTypeName(sessionData.day_type)}</div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-right">
+                    <thead class="bg-gray-200">
+                        <tr>
+                            <th class="p-3 border">عضو</th>
+    `;
+    
+    // اضافه کردن ستون تاریخ‌ها
+    dates.forEach(dateObj => {
+        const isFutureDate = isFutureJalaliDate(dateObj.date);
+        const futureClass = isFutureDate ? 'bg-gray-100 text-gray-400' : '';
+        html += `<th class="p-2 border text-sm text-center ${futureClass}" data-date="${dateObj.date}">${dateObj.full_display}</th>`;
+    });
+    
+    html += `
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+    
+    // اضافه کردن سطرهای اعضا
+    members.forEach(member => {
+        console.log(`👤 ${member.name} ${member.family_name}:`, {
+            belt: member.belt,
+            belt_date: member.belt_date,
+            alerts: member.alerts
+        });
+
+        html += `
+            <tr class="border-t hover:bg-gray-50">
+                <td class="p-3 border font-medium">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <div class="font-bold flex items-center gap-2">
+                                ${member.name} ${member.family_name}
+                                ${member.alerts && member.alerts.length > 0 ? 
+                                    '<span class="blink-red text-xs">🔴</span>' : 
+                                    ''
+                                }
+                            </div>
+                            <div class="text-xs text-gray-500 mb-1">${member.national_id}</div>
+                            
+                            <!-- هشدارهای فشرده با رنگ‌های جدید -->
+                            <div class="flex gap-1 mt-2">
+                                ${generateAlertsHTML(member.alerts)}
+                            </div>
+                        </div>
+                        <button class="suspended-member-btn w-8 h-8 bg-gray-500 text-white rounded-full text-sm ml-2 hover:bg-gray-600 transition-colors" data-member="${member.id}" title="تعلیق/فعال کردن عضو">
+                            ⚫
+                        </button>
+                    </div>
+                </td>
+        `;
+        
+        // اضافه کردن سلول‌های وضعیت برای هر تاریخ
+        dates.forEach(dateObj => {
+            const isFutureDate = isFutureJalaliDate(dateObj.date);
+            const disabledClass = isFutureDate ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-80';
+            const disabledAttr = isFutureDate ? 'disabled' : '';
+            
+            html += `
+                <td class="p-2 border text-center">
+                    <div class="flex justify-center space-x-1 space-x-reverse">
+                        <button class="present-btn w-6 h-6 bg-green-500 text-white rounded text-xs transition-all ${disabledClass}" data-member="${member.id}" data-date="${dateObj.date}" ${disabledAttr} title="حاضر">✅</button>
+                        <button class="absent-btn w-6 h-6 bg-red-500 text-white rounded text-xs transition-all ${disabledClass}" data-member="${member.id}" data-date="${dateObj.date}" ${disabledAttr} title="غایب">❌</button>
+                    </div>
+                </td>
+            `;
+        });
+        
+        html += `</tr>`;
+    });
+    
+    html += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    container.classList.remove('hidden');
+    
+    // تنظیم event listener برای دکمه‌ها
+    setupAttendanceButtons();
+    
+    // بارگذاری وضعیت‌های ذخیره شده
+    loadSavedAttendance(sessionData.session_id, dates);
+    
+    // بررسی وضعیت تعلیق اعضا
+    checkInitialSuspensionStatus();
+}
+
+// تابع جدید برای نمایش هشدارها با رنگ‌های مختلف
+function generateAlertsHTML(alerts) {
+    if (!alerts || !Array.isArray(alerts) || alerts.length === 0) {
+        return '';
+    }
+    
+    return alerts.map(alert => {
+        const daysMatch = alert.message.match(/(\d+)/);
+        const days = daysMatch ? daysMatch[1] : '';
+        const alertColor = getAlertColor(alert.type);
+        
+        return `
+            <div class="alert-group relative inline-block">
+                <span class="text-xs ${alertColor} px-2 py-1 rounded cursor-pointer border font-bold">
+                    !${days}
+                </span>
+                <div class="alert-tooltip absolute bottom-full mb-1 left-0 hidden bg-gray-800 text-white text-xs p-2 rounded shadow-lg z-50 whitespace-nowrap">
+                    ${alert.message}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// تابع جدید برای رنگ هر هشدار
+function getAlertColor(alertType) {
+    const colors = {
+        'insurance_expired': 'alert-insurance-expired',
+        'insurance_urgent': 'alert-insurance-urgent', 
+        'birthday': 'alert-birthday',
+        'belt_upgrade': 'alert-belt-upgrade',
+        'belt_expired': 'belt-expired'
+    };
+    return colors[alertType] || 'bg-gray-500 text-white';
+}
+
+function isFutureJalaliDate(dateString) {
+    try {
+        const parts = dateString.split('/');
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]);
+        const day = parseInt(parts[2]);
+        
+        const today = window.todayJalali;
+        
+        if (year > today.year) return true;
+        if (year < today.year) return false;
+        if (month > today.month) return true;
+        if (month < today.month) return false;
+        
+        return day > today.day;
+    } catch (e) {
+        console.error('خطا در بررسی تاریخ:', e);
+        return false;
+    }
+}
+
+function setupAttendanceButtons() {
+    // دکمه‌های حضور و غیاب
+    document.querySelectorAll('.present-btn, .absent-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!this.disabled) {
+                const status = this.classList.contains('present-btn') ? 'present' : 'absent';
+                setAttendanceStatus(this, status);
+            }
+        });
+    });
+    
+    // دکمه‌های تعلیق
+    document.querySelectorAll('.suspended-member-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const memberId = this.getAttribute('data-member');
+            toggleMemberSuspension(memberId, this);
+        });
+    });
+}
+
+function loadSavedAttendance(sessionId, dates) {
+    if (!sessionId || !dates || dates.length === 0) return;
+    
+    dates.forEach(dateObj => {
+        if (!isFutureJalaliDate(dateObj.date)) {
+            fetch(`/attendance/api/get-attendance?session_id=${sessionId}&date=${encodeURIComponent(dateObj.date)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        applySavedStatuses(data.data, dateObj.date);
+                    }
+                })
+                .catch(error => {
+                    console.error(`خطا در بارگذاری وضعیت برای تاریخ ${dateObj.date}:`, error);
+                });
+        }
+    });
+}
+
+function applySavedStatuses(attendanceData, date) {
+    Object.keys(attendanceData).forEach(memberId => {
+        const status = attendanceData[memberId].status;
+        
+        const buttons = document.querySelectorAll(`button[data-member="${memberId}"][data-date="${date}"]`);
+        
+        buttons.forEach(button => {
+            const row = button.closest('td');
+            if (row) {
+                row.querySelectorAll('button').forEach(btn => {
+                    btn.classList.remove('ring-4', 'ring-green-500', 'ring-red-500', 'ring-gray-500', 'bg-green-300', 'bg-red-300', 'bg-gray-300');
+                });
+                
+                const statusButton = row.querySelector(`.${status}-btn`);
+                if (statusButton && !isFutureJalaliDate(date)) {
+                    if (status === 'present') {
+                        statusButton.classList.add('ring-4', 'ring-green-500', 'bg-green-300');
+                    } else if (status === 'absent') {
+                        statusButton.classList.add('ring-4', 'ring-red-500', 'bg-red-300');
+                    } else if (status === 'suspended') {
+                        row.querySelectorAll('button').forEach(btn => {
+                            btn.disabled = true;
+                            btn.classList.add('opacity-30', 'cursor-not-allowed');
+                        });
+                    }
+                }
+            }
+        });
+    });
+}
+
+function toggleMemberSuspension(memberId, button) {
+    const sessionId = currentSessionId;
+    
+    if (!sessionId) {
+        showNotification('لطفاً ابتدا سانس را انتخاب کنید', 'warning');
+        return;
+    }
+
+    const isCurrentlySuspended = button.classList.contains('bg-red-500');
+    
+    if (isCurrentlySuspended) {
+        activateMember(memberId, button, sessionId);
+    } else {
+        suspendMember(memberId, button, sessionId);
+    }
+}
+
+function suspendMember(memberId, button, sessionId) {
+    // تغییر ظاهر دکمه
+    button.classList.remove('bg-gray-500', 'hover:bg-gray-600');
+    button.classList.add('bg-red-500', 'hover:bg-red-600');
+    button.innerHTML = '⛔';
+    
+    // غیرفعال کردن تمام دکمه‌های حضورغیاب این عضو
+    disableMemberAttendanceButtons(memberId, true);
+    
+    // ذخیره وضعیت در localStorage
+    const suspendedKey = `suspended_${memberId}_${sessionId}`;
+    localStorage.setItem(suspendedKey, 'true');
+    
+    // ارسال درخواست برای تعلیق
+    fetch('/attendance/api/suspend-member', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            member_id: memberId,
+            session_id: sessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+        } else {
+            showNotification('خطا در تعلیق عضو: ' + data.error, 'error');
+            button.classList.remove('bg-red-500', 'hover:bg-red-600');
+            button.classList.add('bg-gray-500', 'hover:bg-gray-600');
+            button.innerHTML = '⚫';
+            disableMemberAttendanceButtons(memberId, false);
+            localStorage.removeItem(suspendedKey);
+        }
+    })
+    .catch(error => {
+        console.error('❌ خطا در ارتباط:', error);
+        showNotification('خطا در ارتباط با سرور', 'error');
+        button.classList.remove('bg-red-500', 'hover:bg-red-600');
+        button.classList.add('bg-gray-500', 'hover:bg-gray-600');
+        button.innerHTML = '⚫';
+        disableMemberAttendanceButtons(memberId, false);
+        localStorage.removeItem(suspendedKey);
+    });
+}
+
+function activateMember(memberId, button, sessionId) {
+    // تغییر ظاهر دکمه
+    button.classList.remove('bg-red-500', 'hover:bg-red-600');
+    button.classList.add('bg-gray-500', 'hover:bg-gray-600');
+    button.innerHTML = '⚫';
+    
+    // فعال کردن تمام دکمه‌های حضورغیاب این عضو
+    disableMemberAttendanceButtons(memberId, false);
+    
+    // حذف وضعیت از localStorage
+    const suspendedKey = `suspended_${memberId}_${sessionId}`;
+    localStorage.removeItem(suspendedKey);
+    
+    // ارسال درخواست برای فعال‌سازی
+    fetch('/attendance/api/activate-member', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            member_id: memberId,
+            session_id: sessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+        } else {
+            showNotification('خطا در فعال‌سازی عضو: ' + data.error, 'error');
+            button.classList.remove('bg-gray-500', 'hover:bg-gray-600');
+            button.classList.add('bg-red-500', 'hover:bg-red-600');
+            button.innerHTML = '⛔';
+            disableMemberAttendanceButtons(memberId, true);
+            localStorage.setItem(suspendedKey, 'true');
+        }
+    })
+    .catch(error => {
+        console.error('❌ خطا در ارتباط:', error);
+        showNotification('خطا در ارتباط با سرور', 'error');
+        button.classList.remove('bg-gray-500', 'hover:bg-gray-600');
+        button.classList.add('bg-red-500', 'hover:bg-red-600');
+        button.innerHTML = '⛔';
+        disableMemberAttendanceButtons(memberId, true);
+        localStorage.setItem(suspendedKey, 'true');
+    });
+}
+
+function disableMemberAttendanceButtons(memberId, disabled) {
+    const allButtons = document.querySelectorAll(`button[data-member="${memberId}"]`);
+    
+    allButtons.forEach(button => {
+        if (button.classList.contains('present-btn') || button.classList.contains('absent-btn')) {
+            if (disabled) {
+                button.disabled = true;
+                button.classList.add('opacity-30', 'cursor-not-allowed');
+                button.classList.remove('ring-4', 'ring-green-500', 'ring-red-500', 'bg-green-300', 'bg-red-300');
+            } else {
+                button.disabled = false;
+                button.classList.remove('opacity-30', 'cursor-not-allowed');
+            }
+        }
+    });
+}
+
+function checkInitialSuspensionStatus() {
+    const sessionId = currentSessionId;
+    if (!sessionId) return;
+    
+    const buttons = document.querySelectorAll('.suspended-member-btn');
+    
+    buttons.forEach(button => {
+        const memberId = button.getAttribute('data-member');
+        const suspendedKey = `suspended_${memberId}_${sessionId}`;
+        const isSuspended = localStorage.getItem(suspendedKey) === 'true';
+        
+        if (isSuspended) {
+            button.classList.remove('bg-gray-500', 'hover:bg-gray-600');
+            button.classList.add('bg-red-500', 'hover:bg-red-600');
+            button.innerHTML = '⛔';
+            disableMemberAttendanceButtons(memberId, true);
+        } else {
+            button.classList.remove('bg-red-500', 'hover:bg-red-600');
+            button.classList.add('bg-gray-500', 'hover:bg-gray-600');
+            button.innerHTML = '⚫';
+            disableMemberAttendanceButtons(memberId, false);
+        }
+    });
+}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 left-4 right-4 md:left-auto md:right-4 md:w-80 p-4 rounded-lg shadow-lg z-50 ${type === 'success' ? 'bg-green-500 text-white' : type === 'error' ? 'bg-red-500 text-white' : type === 'warning' ? 'bg-yellow-500 text-white' : 'bg-blue-500 text-white'}`;
+    notification.innerHTML = `
+        <div class="flex justify-between items-center">
+            <span>${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" class="text-white">×</button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+function getMonthName(month) {
+    const monthNames = {
+        '1': 'فروردین', '2': 'اردیبهشت', '3': 'خرداد',
+        '4': 'تیر', '5': 'مرداد', '6': 'شهریور', 
+        '7': 'مهر', '8': 'آبان', '9': 'آذر',
+        '10': 'دی', '11': 'بهمن', '12': 'اسفند'
+    };
+    return monthNames[month];
+}
+
+function getDayTypeName(dayType) {
+    const typeNames = {
+        'even': 'روزهای زوج',
+        'odd': 'روزهای فرد', 
+        'weekend': 'آخر هفته'
+    };
+    return typeNames[dayType] || 'همه روزها';
+}
+
+function setAttendanceStatus(button, status) {
+    const memberId = button.getAttribute('data-member');
+    const date = button.getAttribute('data-date');
+    const sessionId = currentSessionId;
+    
+    if (!sessionId) {
+        alert('لطفاً ابتدا سانس را انتخاب کنید');
+        return;
+    }
+    
+    if (isFutureJalaliDate(date)) {
+        showNotification('امکان ثبت حضور و غیاب برای تاریخ‌های آینده وجود ندارد', 'warning');
+        return;
+    }
+    
+    // نمایش loading روی دکمه
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '⏳';
+    button.disabled = true;
+    
+    // ارسال درخواست به سرور
+    fetch('/attendance/api/save-attendance', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            member_id: memberId,
+            date: date,
+            status: status,
+            session_id: sessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // تغییر ظاهری
+            const row = button.closest('td');
+            if (row) {
+                row.querySelectorAll('button').forEach(btn => {
+                    btn.classList.remove('ring-4', 'ring-green-500', 'ring-red-500', 'ring-gray-500', 'bg-green-300', 'bg-red-300', 'bg-gray-300');
+                });
+                
+                if (status === 'present') {
+                    button.classList.add('ring-4', 'ring-green-500', 'bg-green-300');
+                } else if (status === 'absent') {
+                    button.classList.add('ring-4', 'ring-red-500', 'bg-red-300');
+                }
+            }
+            
+            showNotification(data.message, 'success');
+        } else {
+            showNotification('خطا در ذخیره وضعیت: ' + data.error, 'error');
+            button.innerHTML = originalHTML;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('خطا در ارتباط با سرور', 'error');
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+}
+</script>
+{% endblock %}ا')
